@@ -1,0 +1,5 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE, path } from '../site';
+---
+<BaseLayout title="关于我"><section class="container inner-page about-page"><div class="kicker">ABOUT / MY SPACE</div><h1>你好，我是<br/><em>{SITE.author}</em></h1><div class="about-page-grid"><div class="about-blob"><span>M.</span></div><div class="about-words"><h2>一个持续积累的个人技术空间。</h2><p>这里主要分享软件开发、技术学习、开发工具和实践复盘。我希望把零散的知识慢慢整理成清晰的笔记，并把学习成果变成看得见的项目。</p><p>网站将随着我的学习不断更新。这里的内容只是起点，欢迎以后再回来看看。</p><div class="about-actions"><a class="btn btn-dark" href={path('/blog/')}>阅读文章 ↗</a>{SITE.email && <a class="inline-link" href={`mailto:${SITE.email}`}>邮件交流 →</a>}{SITE.github && <a class="inline-link" href={SITE.github} rel="me">GitHub ↗</a>}</div></div></div></section></BaseLayout>

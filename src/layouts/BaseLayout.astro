@@ -1,0 +1,77 @@
+---
+import { SITE, path } from '../site';
+import '../styles/global.css';
+const { title = SITE.title, description = SITE.description, article = false } = Astro.props;
+const pageTitle = title === SITE.title ? title : `${title} · ${SITE.title}`;
+const canonical = Astro.site && new URL(Astro.url.pathname, Astro.site);
+const isCurrent = (href: string) => Astro.url.pathname === href
+  || (href !== path('/') && Astro.url.pathname.startsWith(href))
+  || (href === path('/blog/') && Astro.url.pathname.startsWith(path('/tags/')));
+const links = [{label:'首页',href:path('/')},{label:'学习笔记',href:path('/blog/')},{label:'项目',href:path('/projects/')},{label:'关于',href:path('/about/')}];
+---
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f5f5f7" />
+  <meta name="description" content={description} />
+  <title>{pageTitle}</title>
+  <meta name="author" content={SITE.author} />
+  <meta property="og:site_name" content={SITE.title} />
+  <meta property="og:type" content={article ? 'article' : 'website'} />
+  <meta property="og:title" content={pageTitle} />
+  <meta property="og:description" content={description} />
+  <meta name="twitter:card" content={canonical ? 'summary_large_image' : 'summary'} />
+  {canonical && Astro.site && <>
+    <link rel="canonical" href={canonical.href} />
+    <meta property="og:url" content={canonical.href} />
+    <meta property="og:image" content={new URL(path('/assets/share.png'), Astro.site).href} />
+    <meta property="og:image:alt" content="My Space · Learn, Build, Share" />
+  </>}
+  <link rel="icon" type="image/svg+xml" href={path('/assets/favicon.svg')} />
+  <script is:inline>
+    try { const saved=localStorage.getItem('myspace-theme'); if(saved === 'dark' || (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.dataset.theme='dark'; } catch(e) {}
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <header class="site-header">
+    <div class="nav-wrap container">
+      <a class="brand" href={path('/')}>My Space<span>.</span></a>
+      <nav id="nav" class="main-nav" aria-label="主导航">{links.map(link => <a href={link.href} aria-current={isCurrent(link.href) ? (Astro.url.pathname === link.href ? 'page' : 'true') : undefined}>{link.label}</a>)}</nav>
+      <div class="nav-actions">
+        <button id="theme-toggle" class="icon-button" aria-label="切换深色或浅色模式" title="切换深浅色">◐</button>
+        <button id="menu-toggle" class="icon-button mobile-toggle" aria-label="打开菜单" aria-expanded="false" aria-controls="nav">☰</button>
+      </div>
+    </div>
+  </header>
+  <main id="main-content" tabindex="-1"><slot /></main>
+  <footer class="site-footer"><div class="container footer-grid"><div><a class="brand" href={path('/')}>My Space<span>.</span></a><p>Learn. Build. Share.</p></div><div class="footer-links"><a href={path('/blog/')}>学习笔记</a><a href={path('/projects/')}>项目</a>{SITE.github && <a href={SITE.github} target="_blank" rel="me noreferrer">GitHub ↗</a>}{Astro.site && <a href={path('/sitemap.xml')}>站点地图</a>}</div><small>© {new Date().getFullYear()} My Space · 保持好奇，持续创造。</small></div></footer>
+  <script>
+    const toggle = document.querySelector<HTMLButtonElement>('#theme-toggle');
+    toggle?.addEventListener('click', () => {
+      const dark = document.documentElement.dataset.theme !== 'dark';
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      try { localStorage.setItem('myspace-theme', dark ? 'dark':'light'); }catch(e){}
+    });
+    const menu = document.querySelector<HTMLButtonElement>('#menu-toggle');
+    const nav = document.querySelector('#nav');
+    function setMenu(expanded: boolean) {
+      menu?.setAttribute('aria-expanded', String(expanded));
+      menu?.setAttribute('aria-label', expanded ? '关闭菜单' : '打开菜单');
+      nav?.classList.toggle('open', expanded);
+      if (expanded) nav?.querySelector('a')?.focus();
+    }
+    menu?.addEventListener('click', () => setMenu(menu.getAttribute('aria-expanded') !== 'true'));
+    nav?.querySelectorAll('a').forEach(link => link.addEventListener('click', () => setMenu(false)));
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && menu?.getAttribute('aria-expanded') === 'true') {
+        setMenu(false);
+        menu.focus();
+      }
+    });
+    matchMedia('(max-width: 650px)').addEventListener('change', () => setMenu(false));
+  </script>
+</body>
+</html>

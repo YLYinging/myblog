@@ -1,0 +1,45 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from '../components/PostCard.astro';
+import { getCollection } from 'astro:content';
+import { SITE, path } from '../site';
+const posts = (await getCollection('blog', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+const latestPosts = posts.slice(0, 3);
+const categories = [...new Set(posts.map(post => post.data.category))];
+---
+<BaseLayout>
+  <section class="hero container">
+    <div class="hero-content">
+      <div class="eyebrow"><i></i> MY SPACE / 技术博客</div>
+      <h1>你好，我是<br/><em>{SITE.author}</em></h1>
+      <p class="hero-copy">{SITE.description}</p>
+      <div class="hero-actions">
+        <a href={path('/blog/')} class="btn btn-dark">阅读学习笔记 →</a>
+        <a href={path('/projects/')} class="inline-link">查看我的项目 ↗</a>
+      </div>
+      <p class="hero-foot">{SITE.slogan}</p>
+    </div>
+    <div class="hero-visual" aria-hidden="true"><div class="orb"></div><div class="orb-shadow"></div><div class="glass-panel"><div class="glass-head"><span>● ● ●</span> MY SPACE / 001</div><div class="glass-letter">M<span>.</span></div><div class="glass-foot">CREATE / EXPLORE / REPEAT</div></div><div class="float-note top-note">✳ Keep exploring</div><div class="float-note bottom-note">⌘ Make it happen</div></div>
+  </section>
+  <section class="container section-block latest-posts">
+    <div class="section-heading">
+      <div><div class="kicker">01 / JOURNAL</div><h2>学习笔记<span>.</span></h2></div>
+      <a class="inline-link" href={path('/blog/')}>全部笔记 →</a>
+    </div>
+    <div class="card-grid">{latestPosts.map(post => <PostCard post={post} />)}</div>
+    {categories.length > 0 && (
+      <nav class="topic-links" aria-label="按主题浏览学习笔记">
+        <h3 class="kicker">按主题浏览</h3>
+        <div class="pills">
+          {categories.map(category => (
+            <a href={`${path('/blog/')}?${new URLSearchParams({ category })}`}>{category}</a>
+          ))}
+        </div>
+      </nav>
+    )}
+  </section>
+  <section class="container section-block" id="about-preview"><div class="section-heading"><div><div class="kicker">02 / ABOUT</div><h2>关于这个空间<span>.</span></h2></div><a class="inline-link" href={path('/about/')}>了解更多 →</a></div><div class="about-grid"><h3>把复杂的事情<br/>拆成可以完成的<br/><em>一个个小步骤。</em></h3><div><p>My Space 是我的个人数字花园。它收录日常遇到的问题、调试中的发现、学习笔记以及值得保留的开发工具。</p><p>不追求一次写完，只希望每一次记录都能成为下一次进步的起点。</p><div class="number-row"><span><strong>01</strong>Stay curious</span><span><strong>02</strong>Learn by doing</span><span><strong>03</strong>Keep sharing</span></div></div></div></section>
+  <section class="band"><div class="container section-block"><div class="section-heading"><div><div class="kicker">03 / WORK</div><h2>项目与实践<span>.</span></h2></div><a class="inline-link" href={path('/projects/')}>全部项目 →</a></div><div class="project-highlight"><div><div class="kicker">FEATURED CONCEPT</div><h3>My Space 博客平台</h3><p>从静态页面到 Markdown 文章管理，再到 GitHub 自动化部署。这个网站本身就是一项持续完善的项目。</p><div class="pills"><span>Astro</span><span>Markdown</span><span>GitHub Pages</span></div><a class="inline-link" href={path('/projects/')}>查看项目详情 →</a></div><div class="project-shape" aria-hidden="true"><div class="shape-terminal"><span>~ my-space</span><code>const idea = "build";<br/>const growth = "daily";<br/>deploy(idea, growth);</code><b>● ● ●</b></div></div></div></div></section>
+  <section class="ending"><div class="container"><div class="kicker">LET'S KEEP BUILDING</div><h2>保持好奇，<br/><em>持续创造。</em></h2><a href={path('/blog/')} class="btn btn-light">开始阅读 →</a></div></section>
+</BaseLayout>

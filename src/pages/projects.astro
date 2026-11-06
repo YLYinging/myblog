@@ -1,0 +1,6 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE } from '../site';
+const projects=[{name:'My Space 个人博客',type:'网站项目',description:'正在使用的个人博客，集成 Markdown 内容管理、文章筛选、深色模式与 GitHub Actions 自动部署。',tech:['Astro','Markdown','CSS','GitHub Pages'],status:'持续迭代'},{name:'Java 后端练习项目',type:'学习规划',description:'计划围绕 Spring Boot、MySQL、Redis 开发一个具备认证、业务接口和数据管理能力的实践项目。',tech:['Java','Spring Boot','MySQL'],status:'计划中'},{name:'DevOps 自动部署实践',type:'学习规划',description:'计划学习容器化、CI/CD 与 Linux 服务管理，将项目从开发环境稳定发布到线上。',tech:['Linux','Docker','CI/CD'],status:'计划中'}];
+---
+<BaseLayout title="项目作品"><section class="container inner-page"><div class="kicker">SELECTED WORK / PROJECTS</div><h1>项目与作品<span>.</span></h1><p class="page-intro">将学到的知识用于真实实践。这里的规划项目会随着开发进度逐步替换为实际成果。</p><div class="projects-page-grid">{projects.map((project,i)=><article class="project-tile"><div class={`project-tile-art art-tone-${i+1}`}><span>PROJECT / 0{i+1}</span><strong>{project.name.slice(0,2)}</strong></div><div class="project-tile-body"><div class="project-label">{project.type} · {project.status}</div><h2>{project.name}</h2><p>{project.description}</p><div class="pills">{project.tech.map(t=><span>{t}</span>)}</div>{i===0 && <a class="inline-link" href={SITE.github} target="_blank" rel="noreferrer">GitHub 主页 ↗</a>}</div></article>)}</div></section></BaseLayout>

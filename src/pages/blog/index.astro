@@ -1,0 +1,101 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import { getCollection } from 'astro:content';
+import { path } from '../../site';
+
+const posts = (await getCollection('blog', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+const categories = [...new Set(posts.map(post => post.data.category))];
+const tags = [...new Set(posts.flatMap(post => post.data.tags))]
+  .sort((a, b) => a.localeCompare(b, 'zh-CN'));
+---
+<BaseLayout title="学习笔记" description="My Space 的 Java、前端、DevOps 和工具学习笔记。">
+  <section class="container inner-page">
+    <div class="kicker">JOURNAL / ALL POSTS</div>
+    <h1>学习笔记<span>.</span></h1>
+    <p class="page-intro">从 Java 到 Linux，记录我遇到的问题、试过的方法和学到的东西。</p>
+    <div class="filter-row">
+      <div class="filter-tags" role="group" aria-label="文章分类">
+        <button type="button" class="filter" data-category="" aria-pressed="true">全部</button>
+        {categories.map(category => (
+          <button type="button" class="filter" data-category={category} aria-pressed="false">{category}</button>
+        ))}
+      </div>
+      <label class="search-field">
+        <span aria-hidden="true">⌕</span>
+        <input type="search" id="search" placeholder="搜索标题、摘要、标签…" aria-label="搜索文章" />
+      </label>
+    </div>
+    <p class="results-summary" id="results-summary" role="status">共 {posts.length} 篇文章</p>
+    <div class="card-grid" id="posts">
+      {posts.map(post => (
+        <div class="filter-item" data-category={post.data.category}
+          data-keywords={`${post.data.title} ${post.data.description} ${post.data.tags.join(' ')} ${post.data.category}`.toLowerCase()}>
+          <PostCard post={post} />
+        </div>
+      ))}
+    </div>
+    <p id="no-results" class="no-results" hidden>没有找到匹配的文章，换个关键词或分类试试。</p>
+    {tags.length > 0 && (
+      <nav class="topic-links" aria-label="按标签浏览">
+        <h2 class="kicker">按标签浏览</h2>
+        <div class="pills">
+          {tags.map(tag => <a href={path(`/tags/${encodeURIComponent(tag)}/`)}>{tag}</a>)}
+        </div>
+      </nav>
+    )}
+  </section>
+  <script>
+    const buttons = document.querySelectorAll<HTMLButtonElement>('.filter');
+    const input = document.querySelector<HTMLInputElement>('#search');
+    const items = document.querySelectorAll<HTMLElement>('.filter-item');
+    const summary = document.querySelector('#results-summary');
+    const empty = document.querySelector<HTMLElement>('#no-results');
+    let category = '';
+
+    function update() {
+      const words = (input?.value ?? '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+      let count = 0;
+      buttons.forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.category === category));
+      });
+      items.forEach(item => {
+        const keywords = item.dataset.keywords ?? '';
+        const matches = (!category || item.dataset.category === category)
+          && words.every(word => keywords.includes(word));
+        item.hidden = !matches;
+        if (matches) count++;
+      });
+      if (summary) summary.textContent = `共 ${count} 篇文章`;
+      if (empty) empty.hidden = count !== 0;
+    }
+
+    function readFilters() {
+      const params = new URLSearchParams(location.search);
+      const requested = params.get('category');
+      category = Array.from(buttons).find(button => button.dataset.category === requested)?.dataset.category ?? '';
+      if (input) input.value = params.get('q') ?? '';
+      update();
+    }
+
+    function saveFilters() {
+      const url = new URL(location.href);
+      const query = input?.value.trim();
+      if (query) url.searchParams.set('q', query);
+      else url.searchParams.delete('q');
+      if (category) url.searchParams.set('category', category);
+      else url.searchParams.delete('category');
+      history.replaceState(history.state, '', url);
+      update();
+    }
+
+    buttons.forEach(button => button.addEventListener('click', () => {
+      category = button.dataset.category ?? '';
+      saveFilters();
+    }));
+    input?.addEventListener('input', saveFilters);
+    window.addEventListener('popstate', readFilters);
+    readFilters();
+  </script>
+</BaseLayout>
