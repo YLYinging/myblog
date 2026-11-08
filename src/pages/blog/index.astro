@@ -15,6 +15,9 @@ const tags = [...new Set(posts.flatMap(post => post.data.tags))]
     <div class="kicker">JOURNAL / ALL POSTS</div>
     <h1>学习笔记<span>.</span></h1>
     <p class="page-intro">从 Java 到 Linux，记录我遇到的问题、试过的方法和学到的东西。</p>
+    <div class="journal-roadmap">
+      <a class="inline-link" href={path('/roadmap/')}>按学习路线阅读 →</a>
+    </div>
     <div class="filter-row">
       <div class="filter-tags" role="group" aria-label="文章分类">
         <button type="button" class="filter" data-category="" aria-pressed="true">全部</button>
@@ -24,19 +27,19 @@ const tags = [...new Set(posts.flatMap(post => post.data.tags))]
       </div>
       <label class="search-field">
         <span aria-hidden="true">⌕</span>
-        <input type="search" id="search" placeholder="搜索标题、摘要、标签…" aria-label="搜索文章" />
+        <input type="search" id="search" placeholder="搜索标题、正文、标签…" aria-label="搜索文章" />
       </label>
     </div>
     <p class="results-summary" id="results-summary" role="status">共 {posts.length} 篇文章</p>
     <div class="card-grid" id="posts">
       {posts.map(post => (
         <div class="filter-item" data-category={post.data.category}
-          data-keywords={`${post.data.title} ${post.data.description} ${post.data.tags.join(' ')} ${post.data.category}`.toLowerCase()}>
+          data-keywords={`${post.data.title} ${post.data.description} ${post.data.tags.join(' ')} ${post.data.category} ${post.body ?? ''}`.toLowerCase()}>
           <PostCard post={post} />
         </div>
       ))}
     </div>
-    <p id="no-results" class="no-results" hidden>没有找到匹配的文章，换个关键词或分类试试。</p>
+    <p id="no-results" class="no-results" hidden={posts.length > 0}>没有找到匹配的文章，换个关键词或分类试试。</p>
     {tags.length > 0 && (
       <nav class="topic-links" aria-label="按标签浏览">
         <h2 class="kicker">按标签浏览</h2>
@@ -49,10 +52,16 @@ const tags = [...new Set(posts.flatMap(post => post.data.tags))]
   <script>
     const buttons = document.querySelectorAll<HTMLButtonElement>('.filter');
     const input = document.querySelector<HTMLInputElement>('#search');
-    const items = document.querySelectorAll<HTMLElement>('.filter-item');
+    // Cache the full-text index once instead of reading large DOM attributes per keystroke.
+    const items = Array.from(document.querySelectorAll<HTMLElement>('.filter-item'), element => ({
+      element,
+      category: element.dataset.category,
+      keywords: element.dataset.keywords ?? '',
+    }));
     const summary = document.querySelector('#results-summary');
     const empty = document.querySelector<HTMLElement>('#no-results');
     let category = '';
+    let pending: ReturnType<typeof setTimeout> | undefined;
 
     function update() {
       const words = (input?.value ?? '').trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -61,10 +70,9 @@ const tags = [...new Set(posts.flatMap(post => post.data.tags))]
         button.setAttribute('aria-pressed', String(button.dataset.category === category));
       });
       items.forEach(item => {
-        const keywords = item.dataset.keywords ?? '';
-        const matches = (!category || item.dataset.category === category)
-          && words.every(word => keywords.includes(word));
-        item.hidden = !matches;
+        const matches = (!category || item.category === category)
+          && words.every(word => item.keywords.includes(word));
+        if (item.element.hidden === matches) item.element.hidden = !matches;
         if (matches) count++;
       });
       if (summary) summary.textContent = `共 ${count} 篇文章`;
@@ -72,6 +80,7 @@ const tags = [...new Set(posts.flatMap(post => post.data.tags))]
     }
 
     function readFilters() {
+      clearTimeout(pending);
       const params = new URLSearchParams(location.search);
       const requested = params.get('category');
       category = Array.from(buttons).find(button => button.dataset.category === requested)?.dataset.category ?? '';
@@ -80,6 +89,7 @@ const tags = [...new Set(posts.flatMap(post => post.data.tags))]
     }
 
     function saveFilters() {
+      clearTimeout(pending);
       const url = new URL(location.href);
       const query = input?.value.trim();
       if (query) url.searchParams.set('q', query);
@@ -94,8 +104,20 @@ const tags = [...new Set(posts.flatMap(post => post.data.tags))]
       category = button.dataset.category ?? '';
       saveFilters();
     }));
-    input?.addEventListener('input', saveFilters);
+    input?.addEventListener('input', event => {
+      clearTimeout(pending);
+      // Wait until Chinese/Japanese IME composition finishes before searching.
+      if (event.isComposing) return;
+      pending = setTimeout(saveFilters, 150);
+    });
+    input?.addEventListener('compositionstart', () => clearTimeout(pending));
+    input?.addEventListener('compositionend', saveFilters);
+    window.addEventListener('pagehide', () => clearTimeout(pending));
     window.addEventListener('popstate', readFilters);
     readFilters();
   </script>
 </BaseLayout>
+
+<style>
+  .journal-roadmap { margin: -12px 0 24px; }
+</style>

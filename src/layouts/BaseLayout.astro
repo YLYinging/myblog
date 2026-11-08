@@ -7,7 +7,7 @@ const canonical = Astro.site && new URL(Astro.url.pathname, Astro.site);
 const isCurrent = (href: string) => Astro.url.pathname === href
   || (href !== path('/') && Astro.url.pathname.startsWith(href))
   || (href === path('/blog/') && Astro.url.pathname.startsWith(path('/tags/')));
-const links = [{label:'首页',href:path('/')},{label:'学习笔记',href:path('/blog/')},{label:'项目',href:path('/projects/')},{label:'关于',href:path('/about/')}];
+const links = [{label:'首页',href:path('/')},{label:'技术分享',href:path('/tech/')},{label:'项目',href:path('/projects/')},{label:'学习笔记',href:path('/blog/')},{label:'关于',href:path('/about/')}];
 ---
 <!doctype html>
 <html lang="zh-CN">
@@ -30,6 +30,7 @@ const links = [{label:'首页',href:path('/')},{label:'学习笔记',href:path('
     <meta property="og:image:alt" content="My Space · Learn, Build, Share" />
   </>}
   <link rel="icon" type="image/svg+xml" href={path('/assets/favicon.svg')} />
+  <link rel="alternate" type="application/rss+xml" title={SITE.title} href={path('/rss.xml')} />
   <script is:inline>
     try { const saved=localStorage.getItem('myspace-theme'); if(saved === 'dark' || (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.dataset.theme='dark'; } catch(e) {}
   </script>
@@ -45,15 +46,44 @@ const links = [{label:'首页',href:path('/')},{label:'学习笔记',href:path('
         <button id="menu-toggle" class="icon-button mobile-toggle" aria-label="打开菜单" aria-expanded="false" aria-controls="nav">☰</button>
       </div>
     </div>
+    {article && <div class="reading-progress" aria-hidden="true"></div>}
   </header>
   <main id="main-content" tabindex="-1"><slot /></main>
-  <footer class="site-footer"><div class="container footer-grid"><div><a class="brand" href={path('/')}>My Space<span>.</span></a><p>Learn. Build. Share.</p></div><div class="footer-links"><a href={path('/blog/')}>学习笔记</a><a href={path('/projects/')}>项目</a>{SITE.github && <a href={SITE.github} target="_blank" rel="me noreferrer">GitHub ↗</a>}{Astro.site && <a href={path('/sitemap.xml')}>站点地图</a>}</div><small>© {new Date().getFullYear()} My Space · 保持好奇，持续创造。</small></div></footer>
+  <footer class="site-footer"><div class="container footer-grid"><div><a class="brand" href={path('/')}>My Space<span>.</span></a><p>Learn. Build. Share.</p></div><div class="footer-links"><a href={path('/projects/')}>项目</a><a href={path('/blog/')}>学习笔记</a><a href={path('/now/')}>最近在做</a><a href={path('/rss.xml')}>RSS</a>{SITE.github && <a href={SITE.github} target="_blank" rel="me noreferrer">GitHub ↗</a>}{Astro.site && <a href={path('/sitemap.xml')}>站点地图</a>}</div><small>© {new Date().getFullYear()} My Space · 保持好奇，持续创造。</small></div></footer>
   <script>
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver(entries => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          entry.target.classList.add('has-entered');
+          observer.unobserve(entry.target);
+        }
+      }, { rootMargin: '0px 0px -18px 0px' });
+      document.querySelectorAll('[data-reveal]').forEach(element => observer.observe(element));
+    }
+
     const toggle = document.querySelector<HTMLButtonElement>('#theme-toggle');
+    const systemTheme = matchMedia('(prefers-color-scheme: dark)');
+    function syncThemeButton() {
+      const dark = document.documentElement.dataset.theme === 'dark';
+      toggle?.setAttribute('aria-pressed', String(dark));
+      toggle?.setAttribute('aria-label', dark ? '切换到浅色模式' : '切换到深色模式');
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#111216' : '#f5f5f7');
+    }
+    syncThemeButton();
+    systemTheme.addEventListener('change', event => {
+      try {
+        const saved = localStorage.getItem('myspace-theme');
+        if (saved === 'dark' || saved === 'light') return;
+      } catch {}
+      document.documentElement.dataset.theme = event.matches ? 'dark' : 'light';
+      syncThemeButton();
+    });
     toggle?.addEventListener('click', () => {
       const dark = document.documentElement.dataset.theme !== 'dark';
       document.documentElement.dataset.theme = dark ? 'dark' : 'light';
       try { localStorage.setItem('myspace-theme', dark ? 'dark':'light'); }catch(e){}
+      syncThemeButton();
     });
     const menu = document.querySelector<HTMLButtonElement>('#menu-toggle');
     const nav = document.querySelector('#nav');

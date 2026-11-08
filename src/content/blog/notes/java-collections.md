@@ -3,6 +3,7 @@ title: "Java 集合框架入门：List、Set 与 Map"
 description: "理解常见集合接口的不同特点，选择更适合场景的数据结构。"
 pubDate: 2026-11-03
 category: Java
+seriesOrder: 1
 tags: [Java, 后端, 数据结构]
 ---
 

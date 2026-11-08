@@ -1,45 +1,365 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import PostCard from '../components/PostCard.astro';
 import { getCollection } from 'astro:content';
-import { SITE, path } from '../site';
+import { SITE, dateText, path } from '../site';
+import { getProjects } from '../projects';
+import { getUpdates } from '../updates';
+import { getTechPosts, selectFeatured } from '../posts';
+
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
   .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
-const latestPosts = posts.slice(0, 3);
-const categories = [...new Set(posts.map(post => post.data.category))];
+const projects = await getProjects();
+const featuredProject = projects.find(project => project.data.status !== '计划中');
+const otherProjects = projects.filter(project => project.id !== featuredProject?.id);
+const setupNote = posts.find(post => post.id === featuredProject?.data.note);
+const techPosts = await getTechPosts();
+const featuredPost = selectFeatured(techPosts);
+const recentPosts = techPosts.filter(post => post.id !== featuredPost?.id).slice(0, 3);
+const topicDetails = [
+  { category: 'Java', title: 'Java', detail: '集合框架与后端基础', mark: '{ }' },
+  { category: 'DevOps', title: 'Linux', detail: '常用命令与排错', mark: '>_' },
+  { category: '工具', title: 'Mac 开发环境', detail: '终端、编辑器与工具', mark: '⌘' },
+  { category: '前端', title: 'Astro', detail: '静态博客与 Markdown', mark: '✦' },
+];
+const categories = new Set(posts.map(post => post.data.category));
+const topics = [
+  ...topicDetails.filter(topic => categories.has(topic.category)),
+  ...[...categories]
+    .filter(category => !topicDetails.some(topic => topic.category === category))
+    .map(category => ({ category, title: category, detail: '浏览主题笔记', mark: '#' })),
+];
+const [latestUpdate] = await getUpdates();
+const postPath = (id: string) => path(`/blog/${id}/`);
 ---
+
 <BaseLayout>
   <section class="hero container">
     <div class="hero-content">
       <div class="eyebrow"><i></i> MY SPACE / 技术博客</div>
-      <h1>你好，我是<br/><em>{SITE.author}</em></h1>
+      <h1>你好，我是<br /><em>{SITE.author}</em></h1>
       <p class="hero-copy">{SITE.description}</p>
       <div class="hero-actions">
-        <a href={path('/blog/')} class="btn btn-dark">阅读学习笔记 →</a>
-        <a href={path('/projects/')} class="inline-link">查看我的项目 ↗</a>
+        <a href={path('/blog/')} class="btn btn-dark">阅读文章 →</a>
+        <a href={path('/projects/')} class="inline-link">看看我的项目 ↗</a>
       </div>
-      <p class="hero-foot">{SITE.slogan}</p>
     </div>
-    <div class="hero-visual" aria-hidden="true"><div class="orb"></div><div class="orb-shadow"></div><div class="glass-panel"><div class="glass-head"><span>● ● ●</span> MY SPACE / 001</div><div class="glass-letter">M<span>.</span></div><div class="glass-foot">CREATE / EXPLORE / REPEAT</div></div><div class="float-note top-note">✳ Keep exploring</div><div class="float-note bottom-note">⌘ Make it happen</div></div>
+    <div class="hero-visual" aria-hidden="true">
+      <div class="orb"></div>
+      <div class="orb-shadow"></div>
+      <div class="glass-panel">
+        <div class="glass-head"><span>● ● ●</span> MY SPACE / 001</div>
+        <div class="glass-letter">M<span>.</span></div>
+        <div class="glass-foot">CREATE / EXPLORE / REPEAT</div>
+      </div>
+      <div class="float-note top-note">✳ Keep exploring</div>
+      <div class="float-note bottom-note">⌘ Make it happen</div>
+    </div>
   </section>
-  <section class="container section-block latest-posts">
+
+  {featuredPost && (
+    <section class="container home-section" aria-labelledby="journal-title">
+      <div class="section-heading">
+        <div><div class="kicker">01 / TECH</div><h2 id="journal-title">技术分享<span>.</span></h2></div>
+        <div class="journal-links">
+          <a class="inline-link" href={path('/tech/')}>全部技术分享 →</a>
+        </div>
+      </div>
+      <div class:list={['home-grid', { 'has-recent': recentPosts.length > 0 }]}>
+        <a class="feature-note" data-reveal href={postPath(featuredPost.id)}>
+          <span class="kicker">精选分享 / {featuredPost.data.category}</span>
+          <span aria-hidden="true" class="feature-art" aria-hidden="true">{featuredPost.data.category.toUpperCase()}</span>
+          <div>
+            <h3>{featuredPost.data.title}</h3>
+            <p>{featuredPost.data.description}</p>
+            <span class="card-link">阅读全文 →</span>
+          </div>
+        </a>
+        {recentPosts.length > 0 && (
+          <div class="recent-panel" data-reveal>
+            <h3>最近更新</h3>
+            <ul>
+              {recentPosts.map(post => (
+                <li>
+                  <a href={postPath(post.id)}>
+                    <span>
+                      <strong>{post.data.title}</strong>
+                      <span class="recent-meta">{dateText(post.data.pubDate)} · {post.data.category}</span>
+                    </span>
+                    <span class="card-arrow" aria-hidden="true">阅读 ↗</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </section>
+  )}
+
+
+  {topics.length > 0 && (
+    <nav class="container home-topics" aria-labelledby="topic-title">
+      <h2 id="topic-title" class="kicker">按主题浏览</h2>
+      <div class="topic-grid">
+        {topics.map(topic => (
+          <a class="topic-tile" data-reveal href={`${path('/blog/')}?${new URLSearchParams({ category: topic.category })}`}>
+            <span class="topic-mark" aria-hidden="true">{topic.mark}</span>
+            <strong>{topic.title}</strong>
+            <span class="topic-description">{topic.detail}</span>
+          </a>
+        ))}
+      </div>
+    </nav>
+  )}
+
+  <section class="container home-section" aria-labelledby="work-title">
     <div class="section-heading">
-      <div><div class="kicker">01 / JOURNAL</div><h2>学习笔记<span>.</span></h2></div>
-      <a class="inline-link" href={path('/blog/')}>全部笔记 →</a>
+      <div><div class="kicker">02 / WORK</div><h2 id="work-title">项目与实践<span>.</span></h2></div>
+      <a class="inline-link" href={path('/projects/')}>全部项目 →</a>
     </div>
-    <div class="card-grid">{latestPosts.map(post => <PostCard post={post} />)}</div>
-    {categories.length > 0 && (
-      <nav class="topic-links" aria-label="按主题浏览学习笔记">
-        <h3 class="kicker">按主题浏览</h3>
-        <div class="pills">
-          {categories.map(category => (
-            <a href={`${path('/blog/')}?${new URLSearchParams({ category })}`}>{category}</a>
+    {latestUpdate && (
+      <div class="home-update" data-reveal>
+        <div>
+          <h3>最近在做</h3>
+          <a class="update-title" href={path(`/now/#${latestUpdate.id}`)}>{latestUpdate.data.title} ↗</a>
+        </div>
+        <time class="recent-meta" datetime={latestUpdate.data.date.toISOString().slice(0, 10)}>{dateText(latestUpdate.data.date)}</time>
+      </div>
+    )}
+    <div class:list={['home-grid', { 'project-grid': featuredProject && otherProjects.length > 0 }]}>
+      {featuredProject && (
+        <article class="home-project" data-reveal>
+          <div class="project-copy">
+            <span class="kicker">{featuredProject.data.status}{featuredProject.data.label && ` / ${featuredProject.data.label}`}</span>
+            <h3>{featuredProject.data.title}</h3>
+            <p>{featuredProject.data.description}</p>
+            <div class="project-links">
+              {featuredProject.data.repository && <a class="inline-link" href={featuredProject.data.repository}>查看源码 ↗</a>}
+              {setupNote && <a class="inline-link" href={postPath(setupNote.id)}>阅读搭建笔记 →</a>}
+            </div>
+          </div>
+          {featuredProject.data.cover && (
+            <img src={path(featuredProject.data.cover)} alt="" width="960" height="500" loading="lazy" />
+          )}
+        </article>
+      )}
+      {otherProjects.length > 0 && (
+        <div class="planned-projects">
+          {otherProjects.map(({ id, data: project }) => (
+            <article class="planned-card" data-reveal>
+              <span class="kicker">{project.status}{project.label && ` / ${project.label}`}</span>
+              <h3>{project.title}</h3>
+              {project.status !== '计划中' && <p>{project.description}</p>}
+              {project.status !== '计划中' && project.milestone && <p><strong>下一步</strong> {project.milestone}</p>}
+              <a class="inline-link" href={path(`/projects/#${id}`)}>查看项目 →</a>
+            </article>
           ))}
         </div>
-      </nav>
-    )}
+      )}
+    </div>
   </section>
-  <section class="container section-block" id="about-preview"><div class="section-heading"><div><div class="kicker">02 / ABOUT</div><h2>关于这个空间<span>.</span></h2></div><a class="inline-link" href={path('/about/')}>了解更多 →</a></div><div class="about-grid"><h3>把复杂的事情<br/>拆成可以完成的<br/><em>一个个小步骤。</em></h3><div><p>My Space 是我的个人数字花园。它收录日常遇到的问题、调试中的发现、学习笔记以及值得保留的开发工具。</p><p>不追求一次写完，只希望每一次记录都能成为下一次进步的起点。</p><div class="number-row"><span><strong>01</strong>Stay curious</span><span><strong>02</strong>Learn by doing</span><span><strong>03</strong>Keep sharing</span></div></div></div></section>
-  <section class="band"><div class="container section-block"><div class="section-heading"><div><div class="kicker">03 / WORK</div><h2>项目与实践<span>.</span></h2></div><a class="inline-link" href={path('/projects/')}>全部项目 →</a></div><div class="project-highlight"><div><div class="kicker">FEATURED CONCEPT</div><h3>My Space 博客平台</h3><p>从静态页面到 Markdown 文章管理，再到 GitHub 自动化部署。这个网站本身就是一项持续完善的项目。</p><div class="pills"><span>Astro</span><span>Markdown</span><span>GitHub Pages</span></div><a class="inline-link" href={path('/projects/')}>查看项目详情 →</a></div><div class="project-shape" aria-hidden="true"><div class="shape-terminal"><span>~ my-space</span><code>const idea = "build";<br/>const growth = "daily";<br/>deploy(idea, growth);</code><b>● ● ●</b></div></div></div></div></section>
-  <section class="ending"><div class="container"><div class="kicker">LET'S KEEP BUILDING</div><h2>保持好奇，<br/><em>持续创造。</em></h2><a href={path('/blog/')} class="btn btn-light">开始阅读 →</a></div></section>
+
+  <section class="container home-section home-about" aria-labelledby="about-title">
+    <div>
+      <div class="kicker">03 / ABOUT</div>
+      <h2 id="about-title">关于这个空间</h2>
+      <p>把学到的知识、遇到的报错和做过的项目记下来。</p>
+    </div>
+    <div class="about-actions">
+      <a class="inline-link" href={path('/about/')}>关于我 ↗</a>
+      <a class="inline-link" href={path('/roadmap/')}>学习路线 ↗</a>
+    </div>
+  </section>
 </BaseLayout>
+
+<script>
+  const visual = document.querySelector<HTMLElement>('.hero-visual');
+  const interactiveMotion = matchMedia('(prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine)');
+  visual?.addEventListener('pointermove', event => {
+    if (!interactiveMotion.matches || event.pointerType !== 'mouse') return;
+    const bounds = visual.getBoundingClientRect();
+    const horizontal = (event.clientX - bounds.left) / bounds.width - 0.5;
+    const vertical = (event.clientY - bounds.top) / bounds.height - 0.5;
+    visual.style.setProperty('--tilt-x', `${-vertical * 18}deg`);
+    visual.style.setProperty('--tilt-y', `${horizontal * 18}deg`);
+  });
+  visual?.addEventListener('pointerleave', () => {
+    visual.style.removeProperty('--tilt-x');
+    visual.style.removeProperty('--tilt-y');
+  });
+</script>
+
+<style>
+  .hero { padding-block: 12px; }
+  .hero-visual { height: 310px; }
+  .home-topics { margin-top: 32px; }
+  .home-topics .kicker { margin: 0 0 10px; }
+  .topic-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .topic-tile, .recent-panel, .home-project, .planned-card {
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+  }
+  .topic-tile {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0 12px;
+    align-items: center;
+    padding: 15px;
+  }
+  .topic-mark {
+    grid-row: span 2;
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    color: var(--accent);
+    background: var(--pill);
+    font: 700 16px/1 monospace;
+  }
+  .topic-description, .recent-meta { font-size: 13px; color: var(--muted); }
+  .topic-tile:hover { border-color: var(--accent); }
+  .home-section { margin-top: 54px; }
+  .journal-links { display: flex; flex-wrap: wrap; gap: 18px; }
+  .home-grid { display: grid; gap: 16px; }
+  .has-recent, .project-grid { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+  .project-grid { align-items: start; }
+  .feature-note {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 66px;
+    padding: 26px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: #18234c;
+    background: linear-gradient(135deg, #edf2ff, #d9d4f7 72%, #ccdaf9);
+  }
+  .feature-note .kicker { color: inherit; }
+  .feature-art {
+    position: absolute;
+    z-index: -1;
+    top: 12px;
+    right: 22px;
+    color: #18234c1f;
+    font: 700 clamp(30px, 5vw, 60px)/1 monospace;
+  }
+  :global([data-theme='dark']) .feature-note {
+    background: linear-gradient(135deg, #242b4b, #32274f);
+    color: #f0edff;
+  }
+  :global([data-theme='dark']) .feature-art { color: #f0edff24; }
+  .home-grid h3 { margin: 0; line-height: 1.35; }
+  .feature-note h3, .home-project h3 { font-size: clamp(22px, 3vw, 30px); }
+  .home-grid p { margin: 8px 0; line-height: 1.65; }
+  .card-link { font-size: 13px; font-weight: 700; }
+  .feature-note:hover .card-link { text-decoration: underline; }
+  .recent-panel { padding: 22px 24px 12px; }
+  .recent-panel ul { list-style: none; margin: 10px 0 0; padding: 0; }
+  .recent-panel li + li { border-top: 1px solid var(--border); }
+  .recent-panel li a {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    padding-block: 12px;
+  }
+  .recent-panel li a:hover strong { color: var(--accent); }
+  .recent-meta { display: block; margin-top: 2px; }
+  .card-arrow { color: var(--accent); white-space: nowrap; flex-shrink: 0; font-size: 13px; }
+  .home-project { overflow: hidden; display: flex; flex-direction: column; }
+  .project-copy, .planned-card { padding: 22px 24px; }
+  .project-copy .kicker, .planned-card .kicker { display: block; margin-bottom: 8px; }
+  .project-copy p, .planned-card p, .home-about p { color: var(--muted); }
+  .home-project img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-top: 1px solid var(--border);
+  }
+  .planned-projects { display: grid; gap: 0; }
+  .planned-card { border: 0; border-radius: 0; background: transparent; padding: 20px 8px; }
+  .planned-card + .planned-card { border-top: 1px solid var(--border); }
+  .project-links { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; }
+  .home-update {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px 16px;
+    margin-bottom: 16px;
+    padding: 18px 24px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--paper);
+  }
+  .home-update h3 { margin: 0 0 4px; font-size: 13px; color: var(--muted); }
+  .update-title { font-weight: 700; color: var(--accent); }
+  .update-title:hover { text-decoration: underline; }
+  .home-about {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding-block: 26px 44px;
+    border-top: 1px solid var(--border);
+  }
+  .home-about h2, .home-about p, .home-about .about-actions { margin: 0; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-content { animation: home-enter 550ms ease-out both; }
+    .hero-visual { animation: home-enter 700ms ease-out 90ms both; }
+    .float-note { animation: note-settle 900ms ease-out 220ms both; }
+    .bottom-note { animation-delay: 330ms; }
+    .topic-tile:nth-child(2n).has-entered,
+    .recent-panel.has-entered,
+    .planned-card + .planned-card.has-entered { animation-delay: 65ms; }
+  }
+
+  @media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+    .glass-panel { transition: transform 380ms ease, box-shadow 380ms ease; }
+    .hero-visual:hover .glass-panel {
+      transform: perspective(800px) translateY(-8px) rotate(-3deg) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+      box-shadow: 0 32px 70px #5054904d, inset 0 1px white;
+    }
+    :is(.topic-tile, .feature-note) {
+      transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+    }
+    :is(.topic-tile, .feature-note):hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow);
+    }
+  }
+
+  @keyframes home-enter {
+    from { opacity: 0.45; translate: 0 14px; }
+    to { opacity: 1; translate: 0 0; }
+  }
+  @keyframes note-settle {
+    from { opacity: 0.45; translate: 0 10px; }
+    65% { translate: 0 -3px; }
+    to { opacity: 1; translate: 0 0; }
+  }
+
+  @media (max-width: 900px) {
+    .topic-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 650px) {
+    .hero { padding-block: 36px 12px; }
+    .hero-visual { display: none; }
+    .hero + .home-section { margin-top: 28px; }
+    .topic-tile { padding: 10px; gap: 0 8px; }
+    .topic-mark { width: 27px; height: 32px; }
+    .has-recent, .project-grid { grid-template-columns: minmax(0, 1fr); }
+    .home-section { margin-top: 36px; }
+    .home-about { flex-direction: column; align-items: flex-start; }
+  }
+</style>

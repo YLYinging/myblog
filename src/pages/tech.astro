@@ -1,0 +1,84 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from '../components/PostCard.astro';
+import { getTechPosts, selectFeatured } from '../posts';
+import { path } from '../site';
+
+const description = '从一个具体问题出发，找排错步骤、工具配置和项目搭建方法。';
+const posts = await getTechPosts();
+const featured = selectFeatured(posts);
+const remaining = posts.filter(post => post.id !== featured?.id);
+const sections = [
+  { title: '排错指南', group: 'troubleshooting' },
+  { title: '工具配置', group: 'tools' },
+  { title: '项目复盘', group: 'retrospective' },
+  { title: '更多实践', group: undefined },
+].map(section => ({
+  title: section.title,
+  posts: remaining.filter(post => post.data.shareGroup === section.group),
+})).filter(section => section.posts.length > 0);
+---
+
+<BaseLayout title="技术分享" description={description}>
+  <section class="container inner-page">
+    <div class="kicker">TECH / FIELD NOTES</div>
+    <h1>技术分享<span>.</span></h1>
+    <p class="page-intro">{description}</p>
+
+    {featured && (
+      <a class="tech-feature" data-reveal href={path(`/blog/${featured.id}/`)}>
+        <span class="kicker">精选 / {featured.data.category}</span>
+        <h2>{featured.data.title}</h2>
+        <p>{featured.data.description}</p>
+        <span class="inline-link">阅读全文 →</span>
+      </a>
+    )}
+
+    <div class="tech-sections">
+      {sections.map(section => (
+        <section class="tech-section">
+          <h2>{section.title}</h2>
+          <div class="tech-cards">
+            {section.posts.map(post => <PostCard post={post} />)}
+          </div>
+        </section>
+      ))}
+    </div>
+
+    {posts.length === 0 && <p>技术分享准备中。</p>}
+    <a class="inline-link tech-notes" href={path('/blog/')}>浏览全部学习笔记 →</a>
+  </section>
+</BaseLayout>
+
+<style>
+  .tech-feature {
+    display: block;
+    padding: clamp(20px, 4vw, 36px);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: #18234c;
+    background: linear-gradient(135deg, #edf2ff, #d9d4f7 72%, #ccdaf9);
+  }
+  :global([data-theme='dark']) .tech-feature {
+    color: #f0edff;
+    background: linear-gradient(135deg, #242b4b, #32274f);
+  }
+  .tech-feature .kicker, .tech-feature .inline-link { color: inherit; }
+  .tech-feature h2 { margin: 6px 0; font-size: clamp(23px, 4vw, 34px); }
+  .tech-feature p { margin: 6px 0 14px; }
+  .tech-feature ul { padding: 0; list-style: none; }
+  .tech-feature li {
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 12px;
+  }
+  .tech-feature:hover .inline-link { text-decoration: underline; }
+  .tech-sections { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+  .tech-section h2 { margin: 24px 0 10px; font-size: 20px; }
+  .tech-cards { display: grid; gap: 12px; }
+  .tech-notes { display: inline-block; margin-top: 26px; }
+  @media (max-width: 650px) {
+    .tech-sections { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  }
+</style>

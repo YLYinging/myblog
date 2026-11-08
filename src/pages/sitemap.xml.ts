@@ -8,7 +8,7 @@ export const GET: APIRoute = async ({ site }) => {
     const posts = await getCollection('blog', ({ data }) => !data.draft);
     const tags = new Set(posts.flatMap(({ data }) => data.tags));
     const routes = [
-      '/', '/blog/', '/projects/', '/about/',
+      '/', '/blog/', '/tech/', '/projects/', '/about/', '/roadmap/', '/now/',
       ...posts.map(({ id }) => `/blog/${id}/`),
       ...Array.from(tags, tag => `/tags/${encodeURIComponent(tag)}/`),
     ];

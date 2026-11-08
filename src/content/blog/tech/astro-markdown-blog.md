@@ -4,6 +4,7 @@ description: "将文章与页面样式分离，用一个 Markdown 文件发布�
 pubDate: 2026-11-06
 category: 前端
 tags: [Astro, Markdown, GitHub Pages]
+shareGroup: retrospective
 ---
 
 ## 为什么采用 Astro？
@@ -12,7 +13,7 @@ tags: [Astro, Markdown, GitHub Pages]
 
 ## 新增一篇文章
 
-在 `src/content/blog/` 新建一个 `.md` 文件，例如 `my-first-note.md`：
+在 `src/content/blog/notes/` 新建一个 `.md` 文件，例如 `my-first-note.md`：
 
 ```markdown
 ---

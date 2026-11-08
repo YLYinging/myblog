@@ -4,6 +4,8 @@ description: "从文件、进程到网络和日志，用常见命令快速定位
 pubDate: 2026-10-29
 category: DevOps
 tags: [Linux, DevOps, 工具]
+shareGroup: troubleshooting
+featured: true
 ---
 
 ## 先确认当前环境

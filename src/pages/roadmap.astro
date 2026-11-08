@@ -1,5 +1,68 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-const steps=[{title:'编程语言与计算机基础',description:'Java 基础、面向对象、集合、泛型、并发、算法、网络与操作系统',tags:['Java','数据结构','计算机网络']},{title:'数据库与服务端开发',description:'MySQL、Redis、Spring Boot、RESTful API、认证鉴权、自动化测试',tags:['Spring Boot','MySQL','Redis']},{title:'前端与全栈协作',description:'HTML/CSS、JavaScript、TypeScript、Vue、前后端接口联调',tags:['JavaScript','TypeScript','Vue']},{title:'DevOps 与工程实践',description:'Git、Linux、Docker、CI/CD、部署、日志排查、监控与项目复盘',tags:['Git','Docker','GitHub Actions']}];
+import { getCollection } from 'astro:content';
+import { path } from '../site';
+
+const steps = [
+  {
+    title: '编程语言与计算机基础',
+    focus: '先掌握 Java 集合，能根据场景选择 List、Set 或 Map。',
+    tags: ['Java', '数据结构', '计算机网络'],
+    status: '已有笔记',
+    notes: ['java-collections'],
+  },
+  {
+    title: '数据库与服务端开发',
+    focus: '下一步做一个连接 MySQL 的 Spring Boot 查询接口。',
+    tags: ['Spring Boot', 'MySQL', 'Redis'],
+    status: '下一步',
+    notes: [],
+  },
+  {
+    title: '前端与全栈协作',
+    focus: '从 Astro、Markdown 和 Mac 开发环境入手，再练习前后端联调。',
+    tags: ['Astro', 'JavaScript', 'Vue'],
+    status: '已有笔记',
+    notes: ['astro-markdown-blog', 'mac-dev-environment'],
+  },
+  {
+    title: 'DevOps 与工程实践',
+    focus: '先练习 Linux 日志和端口排查，再部署一个容器化服务。',
+    tags: ['Linux', 'Docker', 'GitHub Actions'],
+    status: '已有笔记',
+    notes: ['linux-troubleshooting'],
+  },
+];
+const posts = await getCollection('blog', ({ data }) => !data.draft);
+const postsById = new Map(posts.map(post => [post.id, post]));
 ---
-<BaseLayout title="学习路线"><section class="container inner-page"><div class="kicker">ROADMAP / LEARNING</div><h1>学习路线<span>.</span></h1><p class="page-intro">以开发能力为目标，将学习拆分成可实践、可复盘的四个阶段。这里展示的是建议顺序，不代表已完成进度。</p><div class="roadmap-list">{steps.map((step,i)=><section class="roadmap-step"><div class="step-index">0{i+1}</div><div><h2>{step.title}</h2><p>{step.description}</p><div class="pills">{step.tags.map(t=><span>{t}</span>)}</div></div><span class="step-status">学习阶段</span></section>)}</div></section></BaseLayout>
+
+<BaseLayout title="学习路线">
+  <section class="container inner-page">
+    <div class="kicker">ROADMAP / LEARNING</div>
+    <h1>学习路线<span>.</span></h1>
+    <p class="page-intro">把学习拆成四个阶段。每个阶段都有练习目标，有笔记的可以直接开始读。</p>
+    <div class="roadmap-list">
+      {steps.map((step, index) => (
+        <section class="roadmap-step" data-reveal>
+          <div class="step-index">0{index + 1}</div>
+          <div>
+            <h2>{step.title}</h2>
+            <p>{step.focus}</p>
+            <div class="pills">{step.tags.map(tag => <span>{tag}</span>)}</div>
+            {step.notes.map(id => {
+              const post = postsById.get(id);
+              return post && <a class="inline-link roadmap-note" href={path(`/blog/${id}/`)}>{post.data.title} →</a>;
+            })}
+          </div>
+          <span class="step-status">{step.status}</span>
+        </section>
+      ))}
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .roadmap-note { display: block; width: fit-content; margin-top: 8px; }
+  .roadmap-note:hover { text-decoration: underline; }
+</style>

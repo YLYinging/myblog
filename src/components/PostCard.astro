@@ -3,7 +3,7 @@ import type { CollectionEntry } from 'astro:content';
 import { path, dateText } from '../site';
 const { post } = Astro.props as {post: CollectionEntry<'blog'>};
 ---
-<a class="post-card" href={path(`/blog/${post.id}/`)}>
+<a class="post-card" data-reveal href={path(`/blog/${post.id}/`)}>
   <div class="post-art"><span>{post.data.category.toUpperCase()}</span><b>↗</b></div>
   <div class="post-body"><span class="meta">{dateText(post.data.pubDate)} · {post.data.category}</span><h3>{post.data.title}</h3><p>{post.data.description}</p><span class="inline-link">阅读全文 →</span></div>
 </a>

@@ -2,12 +2,164 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getCollection, render } from 'astro:content';
 import { dateText, path } from '../../site';
-export async function getStaticPaths(){const posts=await getCollection('blog',({data})=>!data.draft);return posts.map(post=>({params:{slug:post.id},props:{post}}));}
-const { post }=Astro.props;
-const { Content, headings }=await render(post);
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog', ({ data }) => !data.draft);
+  const javaPosts = posts.filter(post => post.data.category === 'Java')
+    .sort((a, b) =>
+      (a.data.seriesOrder ?? Infinity) - (b.data.seriesOrder ?? Infinity)
+      || a.data.pubDate.getTime() - b.data.pubDate.getTime()
+      || a.id.localeCompare(b.id),
+    );
+  const nextJavaPosts = new Map(javaPosts.slice(0, -1).map((post, index) => [post.id, javaPosts[index + 1]]));
+  return posts.map(post => {
+    const nextPosts = posts
+      .filter(candidate => candidate.id !== post.id)
+      .map(candidate => ({
+        post: candidate,
+        score: Number(candidate.data.category === post.data.category)
+          + candidate.data.tags.filter(tag => post.data.tags.includes(tag)).length,
+      }))
+      .sort((a, b) => b.score - a.score || b.post.data.pubDate.getTime() - a.post.data.pubDate.getTime())
+      .slice(0, 2)
+      .map(({ post }) => ({ id: post.id, title: post.data.title }));
+    const nextJavaPost = nextJavaPosts.get(post.id);
+    return { params: { slug: post.id }, props: { post, nextPosts, nextJavaPost } };
+  });
+}
+
+const { post, nextPosts, nextJavaPost } = Astro.props;
+const { Content, headings } = await render(post);
+const sections = headings.filter(heading => heading.depth <= 3);
 ---
+
 <BaseLayout title={post.data.title} description={post.data.description} article>
-  <section class="container article-shell"><a class="article-back inline-link" href={path('/blog/')}>← 返回全部文章</a><header class="article-heading"><div class="kicker">{post.data.category.toUpperCase()} / JOURNAL</div><h1>{post.data.title}</h1><p>{post.data.description}</p><div class="article-byline">{dateText(post.data.pubDate)}{post.data.updatedDate && ` · 更新于 ${dateText(post.data.updatedDate)}`}</div><div class="pills">{post.data.tags.map((tag:string)=><a href={path(`/tags/${encodeURIComponent(tag)}/`)}>{tag}</a>)}</div></header>
-  <div class="article-grid"><article class="prose"><Content /></article><aside class="toc"><span class="kicker">本文目录</span>{headings.filter(h=>h.depth<=3).map(h=><a class:list={{indent:h.depth===3}} href={`#${h.slug}`}>{h.text}</a>)}</aside></div>
-  <div class="article-bottom"><a class="inline-link" href={path('/blog/')}>← 返回文章列表</a></div></section>
+  <section class="container article-shell">
+    <a class="article-back inline-link" href={path('/blog/')}>← 返回全部文章</a>
+    <header class="article-heading">
+      <div class="kicker">{post.data.category.toUpperCase()} / JOURNAL</div>
+      <h1>{post.data.title}</h1>
+      <p>{post.data.description}</p>
+      <div class="article-byline">{dateText(post.data.pubDate)}{post.data.updatedDate && ` · 更新于 ${dateText(post.data.updatedDate)}`}</div>
+      <div class="pills">
+        {post.data.tags.map(tag => <a href={path(`/tags/${encodeURIComponent(tag)}/`)}>{tag}</a>)}
+      </div>
+    </header>
+
+    <div class:list={['article-grid', { 'no-toc': sections.length === 0 }]}>
+      {sections.length > 0 && (
+        <details class="toc" open>
+          <summary class="kicker">本文目录</summary>
+          {sections.map(section => (
+            <a class:list={{ indent: section.depth === 3 }} href={`#${section.slug}`}>{section.text}</a>
+          ))}
+        </details>
+      )}
+      <article class="prose"><Content /></article>
+    </div>
+
+    <div class="article-bottom" data-reveal>
+      {post.data.category === 'Java' ? (
+        <div class="next-posts">
+          <h2>继续学习 Java</h2>
+          {nextJavaPost ? (
+            <a href={path(`/blog/${nextJavaPost.id}/`)}>下一篇：{nextJavaPost.data.title} →</a>
+          ) : (
+            <a href={path('/roadmap/')}>返回学习路线 →</a>
+          )}
+        </div>
+      ) : nextPosts.length > 0 && (
+        <nav class="next-posts" aria-labelledby="next-title">
+          <h2 id="next-title">继续阅读</h2>
+          <ul>
+            {nextPosts.map(next => <li><a href={path(`/blog/${next.id}/`)}>{next.title} →</a></li>)}
+          </ul>
+        </nav>
+      )}
+      <a class="inline-link" href={path('/blog/')}>← 返回文章列表</a>
+    </div>
+  </section>
 </BaseLayout>
+
+<script>
+  const toc = document.querySelector<HTMLDetailsElement>('details.toc');
+  const mobile = matchMedia('(max-width: 650px)');
+  if (toc) {
+    const updateToc = () => { toc.open = !mobile.matches; };
+    mobile.addEventListener('change', updateToc);
+    updateToc();
+  }
+
+  document.querySelectorAll<HTMLElement>('.prose pre').forEach(block => {
+    const code = block.querySelector('code');
+    if (!code) return;
+    block.tabIndex = 0;
+    block.setAttribute('role', 'region');
+    block.setAttribute('aria-label', '代码示例，可左右滚动');
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'code-block';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'copy-code';
+    button.textContent = '复制代码';
+    const feedback = document.createElement('span');
+    feedback.className = 'copy-feedback';
+    feedback.setAttribute('role', 'status');
+
+    block.before(wrapper);
+    wrapper.append(button, feedback, block);
+    button.addEventListener('click', async () => {
+      feedback.textContent = '';
+      try {
+        await navigator.clipboard.writeText(code.textContent ?? '');
+        feedback.textContent = '已复制';
+      } catch {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(code);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        feedback.textContent = '请手动复制已选中的代码';
+      }
+    });
+  });
+</script>
+
+<style>
+  .article-grid .toc { grid-column: 2; grid-row: 1; }
+  .article-grid .prose { grid-column: 1; grid-row: 1; }
+  .article-grid.no-toc { grid-template-columns: minmax(0, 1fr); max-width: 740px; }
+  .toc summary { cursor: pointer; }
+  .next-posts { margin-bottom: 24px; }
+  .next-posts h2 { margin: 0 0 8px; font-size: 19px; }
+  .next-posts ul { margin: 0; padding-inline-start: 22px; }
+  .next-posts a { color: var(--accent); }
+  .next-posts a:hover { text-decoration: underline; }
+  .prose :global(.code-block) { position: relative; padding-top: 31px; margin-block: 1em; }
+  .prose :global(.code-block pre) { margin: 0; }
+  .prose :global(.copy-code) {
+    position: absolute;
+    top: 0;
+    right: 0;
+    padding: 2px 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--accent);
+    background: var(--paper);
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  .prose :global(.copy-feedback) {
+    position: absolute;
+    top: 0;
+    right: 78px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 2;
+  }
+  @media (max-width: 650px) {
+    .article-grid .toc { grid-column: 1; }
+    .article-grid:has(.toc) .prose { grid-row: 2; }
+  }
+</style>

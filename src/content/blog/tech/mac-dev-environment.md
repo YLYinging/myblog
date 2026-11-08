@@ -4,6 +4,7 @@ description: "把终端、编辑器、版本管理和本地开发环境安排得
 pubDate: 2026-10-22
 category: 工具
 tags: [macOS, VS Code, Git]
+shareGroup: tools
 ---
 
 ## 开始之前

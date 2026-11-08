@@ -1,0 +1,41 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection, render } from 'astro:content';
+import { dateText, path } from '../site';
+import { getUpdates } from '../updates';
+
+const publishedPosts = await getCollection('blog', ({ data }) => !data.draft);
+const publishedIds = new Set(publishedPosts.map(post => post.id));
+const updates = await Promise.all((await getUpdates()).map(async entry => ({
+  id: entry.id,
+  ...entry.data,
+  Content: (await render(entry)).Content,
+})));
+---
+
+<BaseLayout title="最近在做">
+  <section class="container inner-page">
+    <div class="kicker">NOW / UPDATES</div>
+    <h1>最近在做<span>.</span></h1>
+    <p class="page-intro">记录 My Space 的改动和学习实践。</p>
+    <div class="roadmap-list">
+      {updates.map(update => (
+        <article class="update-entry" data-reveal id={update.id}>
+          <time class="kicker" datetime={update.date.toISOString().slice(0, 10)}>{dateText(update.date)}</time>
+          <h2>{update.title}</h2>
+          <p>{update.description}</p>
+          <div class="prose"><update.Content /></div>
+          {update.note && publishedIds.has(update.note.slug) && (
+            <a class="inline-link" href={path(`/blog/${update.note.slug}/`)}>{update.note.label} →</a>
+          )}
+        </article>
+      ))}
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .update-entry { padding-block: 22px; border-bottom: 1px solid var(--border); }
+  .update-entry h2 { margin: 5px 0; }
+  .update-entry p { color: var(--muted); }
+</style>
